@@ -28,15 +28,19 @@ import com.jme3.input.controls.AnalogListener;
 import com.jme3.input.controls.KeyTrigger;
 import com.jme3.light.AmbientLight;
 import com.jme3.light.DirectionalLight;
+import com.jme3.material.MatParam;
 import com.jme3.material.Material;
+import com.jme3.material.RenderState;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Vector3f;
 import com.jme3.network.Client;
+import com.jme3.renderer.queue.RenderQueue;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.scene.shape.Box;
 import com.jme3.util.TangentBinormalGenerator;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -57,6 +61,7 @@ public class GameAppState extends AbstractAppState {
     private AssetManager assetManager;
     private Node rootNode;
     private static Box b = new Box(0.5f, 0.5f, 0.5f);
+    private FocusedCameraControl camControl;
     
     private boolean firstRun = true;
 
@@ -81,6 +86,13 @@ public class GameAppState extends AbstractAppState {
 
         TangentBinormalGenerator.generate(s);
         rootNode.attachChild(s);
+        
+        Node buildingRootNode = (Node)s;
+        
+        for(int i = 1; i < 9; i++) {
+            Node floor = (Node)buildingRootNode.getChild("floor" + i);
+            setInvisible(floor, true);
+        }
 
         setUpLight();
 
@@ -113,7 +125,49 @@ public class GameAppState extends AbstractAppState {
 //        stateManager.attach(debugAppState);
         
         //Setup camera
+        simpleApp.getFlyByCamera().setEnabled(false);
+        camControl = new FocusedCameraControl(simpleApp.getCamera());
+    }
+    
+    private void setInvisible(Node floorNode, boolean invisible) {
+        List<Spatial> children = floorNode.getChildren();
         
+        for(Spatial s: children) {
+            if(s instanceof Node) {
+                setInvisible((Node)s, invisible);
+            } else if(s instanceof Geometry) {
+                Geometry geo = (Geometry)s;
+                
+                MatParam param = geo.getMaterial().getParam("Diffuse");
+                ColorRGBA c;
+                
+                System.out.println("ParentNode="+floorNode.getName() + " | Mat=" + geo.getMaterial().getMaterialDef().getAssetName());
+                for(MatParam p: geo.getMaterial().getParams()) {
+                    System.out.println(p.getName() + "=" + p.getValueAsString());
+                }
+                System.out.println();
+                
+                if(param != null) {
+                    c = (ColorRGBA)param.getValue();
+                } else {
+                    c = ColorRGBA.White;
+                }
+                
+                if(geo.getMaterial().getMaterialDef().getMaterialParam("Diffuse") != null) {
+                    geo.getMaterial().setColor("Diffuse", new ColorRGBA(c.r, c.b, c.g, invisible ? 0.3f : 1f));
+                } else if(geo.getMaterial().getMaterialDef().getMaterialParam("Color") != null) {
+                    geo.getMaterial().setColor("Color", new ColorRGBA(c.r, c.b, c.g, invisible ? 0.3f : 1f));
+                }
+                
+                if(invisible) {
+                    geo.getMaterial().getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
+                    geo.setQueueBucket(RenderQueue.Bucket.Transparent);
+                } else {
+                    geo.getMaterial().getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Off);
+                    geo.setQueueBucket(RenderQueue.Bucket.Opaque);
+                }
+            }
+        }
     }
 
     @Override
@@ -143,6 +197,8 @@ public class GameAppState extends AbstractAppState {
                 }
             }
         }
+        
+        camControl.controlUpdate(tpf);
     }
 
     private void addPlayer(SnapShotObject sso) {
@@ -157,6 +213,10 @@ public class GameAppState extends AbstractAppState {
 
         geom.addControl(netOwlController);
         netOwlClient.registerController(sso.getId(), netOwlController);
+        
+        if(client.getId() == sso.getId().objectId) {
+            camControl.setTarget(geom);
+        }
     }
 
     private void setUpLight() {
