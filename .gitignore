@@ -1,0 +1,19 @@
+*.db
+*/build/
+*.dll
+*.log
+*~
+*.dia.autosave
+*/dist/
+/NuclearChaseJourney - Client/nbproject/private/
+/NuclearChaseJourney - Common/nbproject/private/
+/NuclearChaseJourney - Server/nbproject/private/
+/build/
+/NuclearChaseJourney - Client/build/
+/NuclearChaseJourney - Commont/build/
+/NuclearChaseJourney - Server/build/
+/nbproject/private/
+/dist/
+/NuclearChaseJourney - Client/dist/
+/NuclearChaseJourney - Common/dist/
+/NuclearChaseJourney - Server/dist/
